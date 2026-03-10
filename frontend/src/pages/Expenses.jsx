@@ -1,42 +1,64 @@
 import { useEffect, useState } from "react";
-import { getExpenses, createExpense, deleteExpense } from "../services/api";
+import { getExpenses, createExpense, updateExpense, deleteExpense } from "../services/api";
 import { CATEGORIES } from "../constants/categories";
 
 const defaultForm = {
   description: "",
   amount: "",
   category: "altro",
-  is_recurring: true,
+  is_recurring: false,
   frequency: "monthly",
   start_date: "",
   end_date: "",
   date: "",
 };
 
+function expenseToForm(exp) {
+  return {
+    description: exp.description,
+    amount: String(exp.amount),
+    category: exp.category,
+    is_recurring: exp.is_recurring,
+    frequency: exp.frequency || "monthly",
+    start_date: exp.start_date || "",
+    end_date: exp.end_date || "",
+    date: exp.date || "",
+  };
+}
+
 export default function ExpensesPage() {
   const [expenses, setExpenses] = useState([]);
   const [form, setForm] = useState(defaultForm);
+  const [editingId, setEditingId] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const load = async () => {
-    setExpenses(await getExpenses());
-  };
+  const load = async () => setExpenses(await getExpenses());
 
-  useEffect(() => {
-    load();
-  }, []);
+  useEffect(() => { load(); }, []);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     setForm((f) => ({ ...f, [name]: type === "checkbox" ? checked : value }));
   };
 
+  const handleEdit = (exp) => {
+    setEditingId(exp.id);
+    setForm(expenseToForm(exp));
+    setError("");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const handleCancel = () => {
+    setEditingId(null);
+    setForm(defaultForm);
+    setError("");
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
 
-    // Validazione JS esplicita
     if (form.is_recurring && !form.start_date) {
       setError("Inserisci una data di inizio per la spesa ricorrente.");
       return;
@@ -59,7 +81,14 @@ export default function ExpensesPage() {
         end_date: recurring && form.end_date ? form.end_date : null,
         date: !recurring ? form.date : null,
       };
-      await createExpense(payload);
+
+      if (editingId !== null) {
+        await updateExpense(editingId, payload);
+      } else {
+        await createExpense(payload);
+      }
+
+      setEditingId(null);
       setForm(defaultForm);
       await load();
     } catch (err) {
@@ -71,6 +100,7 @@ export default function ExpensesPage() {
   };
 
   const handleDelete = async (id) => {
+    if (editingId === id) handleCancel();
     await deleteExpense(id);
     await load();
   };
@@ -81,7 +111,9 @@ export default function ExpensesPage() {
 
       {/* Form */}
       <form onSubmit={handleSubmit} className="bg-gray-800 rounded-xl p-6 space-y-4">
-        <h2 className="text-gray-200 font-semibold">Aggiungi spesa</h2>
+        <h2 className="text-gray-200 font-semibold">
+          {editingId !== null ? "Modifica spesa" : "Aggiungi spesa"}
+        </h2>
 
         {error && (
           <div className="bg-red-900/50 border border-red-600 text-red-300 rounded px-4 py-2 text-sm">
@@ -98,7 +130,7 @@ export default function ExpensesPage() {
               onChange={handleChange}
               required
               className="mt-1 w-full bg-gray-700 text-white rounded px-3 py-2 text-sm"
-              placeholder="Es. Affitto mensile"
+              placeholder="Es. Spesa supermercato"
             />
           </div>
           <div>
@@ -169,8 +201,7 @@ export default function ExpensesPage() {
               </div>
               <div>
                 <label className="text-gray-400 text-sm">
-                  Data fine{" "}
-                  <span className="text-gray-500">(opzionale)</span>
+                  Data fine <span className="text-gray-500">(opzionale)</span>
                 </label>
                 <input
                   name="end_date"
@@ -195,13 +226,24 @@ export default function ExpensesPage() {
           )}
         </div>
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="bg-red-600 hover:bg-red-700 text-white px-5 py-2 rounded-lg text-sm font-medium disabled:opacity-50"
-        >
-          {loading ? "Salvataggio..." : "Aggiungi"}
-        </button>
+        <div className="flex gap-3">
+          <button
+            type="submit"
+            disabled={loading}
+            className="bg-red-600 hover:bg-red-700 text-white px-5 py-2 rounded-lg text-sm font-medium disabled:opacity-50"
+          >
+            {loading ? "Salvataggio..." : editingId !== null ? "Salva modifiche" : "Aggiungi"}
+          </button>
+          {editingId !== null && (
+            <button
+              type="button"
+              onClick={handleCancel}
+              className="bg-gray-600 hover:bg-gray-500 text-white px-5 py-2 rounded-lg text-sm font-medium"
+            >
+              Annulla
+            </button>
+          )}
+        </div>
       </form>
 
       {/* Table */}
@@ -226,7 +268,12 @@ export default function ExpensesPage() {
               </tr>
             ) : (
               expenses.map((exp) => (
-                <tr key={exp.id} className="border-t border-gray-700 hover:bg-gray-700/30">
+                <tr
+                  key={exp.id}
+                  className={`border-t border-gray-700 transition-colors ${
+                    editingId === exp.id ? "bg-indigo-900/30" : "hover:bg-gray-700/30"
+                  }`}
+                >
                   <td className="px-4 py-3 text-gray-200">{exp.description}</td>
                   <td className="px-4 py-3 text-right text-red-400 font-medium">
                     €{exp.amount.toLocaleString("it-IT", { minimumFractionDigits: 2 })}
@@ -242,7 +289,13 @@ export default function ExpensesPage() {
                       ? `${exp.start_date || "—"} → ${exp.end_date || "∞"}`
                       : exp.date || "—"}
                   </td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="px-4 py-3 text-right space-x-3">
+                    <button
+                      onClick={() => handleEdit(exp)}
+                      className="text-indigo-400 hover:text-indigo-300 text-xs"
+                    >
+                      Modifica
+                    </button>
                     <button
                       onClick={() => handleDelete(exp.id)}
                       className="text-red-400 hover:text-red-300 text-xs"

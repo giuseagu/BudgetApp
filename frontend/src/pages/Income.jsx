@@ -1,41 +1,63 @@
 import { useEffect, useState } from "react";
-import { getIncome, createIncome, deleteIncome } from "../services/api";
+import { getIncome, createIncome, updateIncome, deleteIncome } from "../services/api";
 
 const defaultForm = {
   description: "",
   amount: "",
-  type: "salary",
-  is_recurring: true,
+  type: "extra",
+  is_recurring: false,
   frequency: "monthly",
   start_date: "",
   end_date: "",
   date: "",
 };
 
+function incomeToForm(inc) {
+  return {
+    description: inc.description,
+    amount: String(inc.amount),
+    type: inc.type,
+    is_recurring: inc.is_recurring,
+    frequency: inc.frequency || "monthly",
+    start_date: inc.start_date || "",
+    end_date: inc.end_date || "",
+    date: inc.date || "",
+  };
+}
+
 export default function IncomePage() {
   const [incomes, setIncomes] = useState([]);
   const [form, setForm] = useState(defaultForm);
+  const [editingId, setEditingId] = useState(null); // null = nuovo, number = modifica
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const load = async () => {
-    setIncomes(await getIncome());
-  };
+  const load = async () => setIncomes(await getIncome());
 
-  useEffect(() => {
-    load();
-  }, []);
+  useEffect(() => { load(); }, []);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     setForm((f) => ({ ...f, [name]: type === "checkbox" ? checked : value }));
   };
 
+  const handleEdit = (inc) => {
+    setEditingId(inc.id);
+    setForm(incomeToForm(inc));
+    setError("");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const handleCancel = () => {
+    setEditingId(null);
+    setForm(defaultForm);
+    setError("");
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
 
-    // Validazione JS esplicita
     if (form.is_recurring && !form.start_date) {
       setError("Inserisci una data di inizio per l'entrata ricorrente.");
       return;
@@ -58,7 +80,14 @@ export default function IncomePage() {
         end_date: recurring && form.end_date ? form.end_date : null,
         date: !recurring ? form.date : null,
       };
-      await createIncome(payload);
+
+      if (editingId !== null) {
+        await updateIncome(editingId, payload);
+      } else {
+        await createIncome(payload);
+      }
+
+      setEditingId(null);
       setForm(defaultForm);
       await load();
     } catch (err) {
@@ -70,6 +99,7 @@ export default function IncomePage() {
   };
 
   const handleDelete = async (id) => {
+    if (editingId === id) handleCancel();
     await deleteIncome(id);
     await load();
   };
@@ -80,7 +110,9 @@ export default function IncomePage() {
 
       {/* Form */}
       <form onSubmit={handleSubmit} className="bg-gray-800 rounded-xl p-6 space-y-4">
-        <h2 className="text-gray-200 font-semibold">Aggiungi entrata</h2>
+        <h2 className="text-gray-200 font-semibold">
+          {editingId !== null ? "Modifica entrata" : "Aggiungi entrata"}
+        </h2>
 
         {error && (
           <div className="bg-red-900/50 border border-red-600 text-red-300 rounded px-4 py-2 text-sm">
@@ -97,7 +129,7 @@ export default function IncomePage() {
               onChange={handleChange}
               required
               className="mt-1 w-full bg-gray-700 text-white rounded px-3 py-2 text-sm"
-              placeholder="Es. Stipendio principale"
+              placeholder="Es. Bonus anno 2026"
             />
           </div>
           <div>
@@ -121,8 +153,8 @@ export default function IncomePage() {
               onChange={handleChange}
               className="mt-1 w-full bg-gray-700 text-white rounded px-3 py-2 text-sm"
             >
-              <option value="salary">Stipendio</option>
               <option value="extra">Extra</option>
+              <option value="salary">Stipendio</option>
             </select>
           </div>
           <div className="flex items-center gap-3 mt-5">
@@ -165,8 +197,7 @@ export default function IncomePage() {
               </div>
               <div>
                 <label className="text-gray-400 text-sm">
-                  Data fine{" "}
-                  <span className="text-gray-500">(opzionale)</span>
+                  Data fine <span className="text-gray-500">(opzionale)</span>
                 </label>
                 <input
                   name="end_date"
@@ -191,13 +222,24 @@ export default function IncomePage() {
           )}
         </div>
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-lg text-sm font-medium disabled:opacity-50"
-        >
-          {loading ? "Salvataggio..." : "Aggiungi"}
-        </button>
+        <div className="flex gap-3">
+          <button
+            type="submit"
+            disabled={loading}
+            className="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-lg text-sm font-medium disabled:opacity-50"
+          >
+            {loading ? "Salvataggio..." : editingId !== null ? "Salva modifiche" : "Aggiungi"}
+          </button>
+          {editingId !== null && (
+            <button
+              type="button"
+              onClick={handleCancel}
+              className="bg-gray-600 hover:bg-gray-500 text-white px-5 py-2 rounded-lg text-sm font-medium"
+            >
+              Annulla
+            </button>
+          )}
+        </div>
       </form>
 
       {/* Table */}
@@ -222,7 +264,12 @@ export default function IncomePage() {
               </tr>
             ) : (
               incomes.map((inc) => (
-                <tr key={inc.id} className="border-t border-gray-700 hover:bg-gray-700/30">
+                <tr
+                  key={inc.id}
+                  className={`border-t border-gray-700 transition-colors ${
+                    editingId === inc.id ? "bg-indigo-900/30" : "hover:bg-gray-700/30"
+                  }`}
+                >
                   <td className="px-4 py-3 text-gray-200">{inc.description}</td>
                   <td className="px-4 py-3 text-right text-green-400 font-medium">
                     €{inc.amount.toLocaleString("it-IT", { minimumFractionDigits: 2 })}
@@ -240,7 +287,13 @@ export default function IncomePage() {
                       ? `${inc.start_date || "—"} → ${inc.end_date || "∞"}`
                       : inc.date || "—"}
                   </td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="px-4 py-3 text-right space-x-3">
+                    <button
+                      onClick={() => handleEdit(inc)}
+                      className="text-indigo-400 hover:text-indigo-300 text-xs"
+                    >
+                      Modifica
+                    </button>
                     <button
                       onClick={() => handleDelete(inc.id)}
                       className="text-red-400 hover:text-red-300 text-xs"

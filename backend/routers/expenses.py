@@ -22,6 +22,18 @@ def create_expense(data: schemas.ExpenseCreate, db: Session = Depends(get_db)):
     return expense
 
 
+@router.put("/{expense_id}", response_model=schemas.ExpenseRead)
+def update_expense(expense_id: int, data: schemas.ExpenseCreate, db: Session = Depends(get_db)):
+    expense = db.query(models.Expense).filter(models.Expense.id == expense_id).first()
+    if not expense:
+        raise HTTPException(status_code=404, detail="Expense not found")
+    for field, value in data.model_dump().items():
+        setattr(expense, field, value)
+    db.commit()
+    db.refresh(expense)
+    return expense
+
+
 @router.delete("/{expense_id}", status_code=204)
 def delete_expense(expense_id: int, db: Session = Depends(get_db)):
     expense = db.query(models.Expense).filter(models.Expense.id == expense_id).first()

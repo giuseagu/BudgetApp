@@ -22,6 +22,18 @@ def create_income(data: schemas.IncomeCreate, db: Session = Depends(get_db)):
     return income
 
 
+@router.put("/{income_id}", response_model=schemas.IncomeRead)
+def update_income(income_id: int, data: schemas.IncomeCreate, db: Session = Depends(get_db)):
+    income = db.query(models.Income).filter(models.Income.id == income_id).first()
+    if not income:
+        raise HTTPException(status_code=404, detail="Income not found")
+    for field, value in data.model_dump().items():
+        setattr(income, field, value)
+    db.commit()
+    db.refresh(income)
+    return income
+
+
 @router.delete("/{income_id}", status_code=204)
 def delete_income(income_id: int, db: Session = Depends(get_db)):
     income = db.query(models.Income).filter(models.Income.id == income_id).first()

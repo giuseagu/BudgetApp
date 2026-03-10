@@ -13,12 +13,14 @@ export const updateBalance = (amount) =>
 export const getIncome = () => api.get("/income").then((r) => r.data);
 export const createIncome = (data) =>
   api.post("/income", data).then((r) => r.data);
+export const updateIncome = (id, data) => api.put(`/income/${id}`, data).then((r) => r.data);
 export const deleteIncome = (id) => api.delete(`/income/${id}`);
 
 // Expenses
 export const getExpenses = () => api.get("/expenses").then((r) => r.data);
 export const createExpense = (data) =>
   api.post("/expenses", data).then((r) => r.data);
+export const updateExpense = (id, data) => api.put(`/expenses/${id}`, data).then((r) => r.data);
 export const deleteExpense = (id) => api.delete(`/expenses/${id}`);
 
 // Budgets
