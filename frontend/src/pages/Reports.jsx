@@ -38,9 +38,14 @@ export default function Reports() {
     fn.then(setReport).finally(() => setLoading(false));
   }, [tab, month, quarter]);
 
+  const switchTab = (id) => {
+    setReport(null);  // azzera subito per evitare render con dati sbagliati
+    setTab(id);
+  };
+
   const tabBtn = (id, label) => (
     <button
-      onClick={() => setTab(id)}
+      onClick={() => switchTab(id)}
       className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
         tab === id ? "bg-indigo-600 text-white" : "bg-gray-700 text-gray-300 hover:bg-gray-600"
       }`}
@@ -71,8 +76,8 @@ export default function Reports() {
 
       {loading && <p className="text-gray-400">Caricamento...</p>}
 
-      {report && tab === "monthly" && <MonthlyView report={report} />}
-      {report && tab === "quarterly" && <QuarterlyView report={report} />}
+      {report && tab === "monthly" && report.income_by_type && <MonthlyView report={report} />}
+      {report && tab === "quarterly" && report.monthly_breakdown && <QuarterlyView report={report} />}
     </div>
   );
 }
