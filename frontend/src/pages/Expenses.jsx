@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { getExpenses, createExpense, deleteExpense } from "../services/api";
-
-const CATEGORIES = ["affitto", "cibo", "trasporti", "salute", "svago", "abbonamenti", "altro"];
+import { CATEGORIES } from "../constants/categories";
 
 const defaultForm = {
   description: "",

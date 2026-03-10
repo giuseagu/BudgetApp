@@ -21,6 +21,19 @@ export const createExpense = (data) =>
   api.post("/expenses", data).then((r) => r.data);
 export const deleteExpense = (id) => api.delete(`/expenses/${id}`);
 
+// Budgets
+export const getBudgets = (month) =>
+  api.get(`/budgets?month=${month}`).then((r) => r.data);
+export const upsertBudget = (data) =>
+  api.put("/budgets", data).then((r) => r.data);
+export const deleteBudget = (id) => api.delete(`/budgets/${id}`);
+
+// Reports
+export const getMonthlyReport = (month) =>
+  api.get(`/reports/monthly?month=${month}`).then((r) => r.data);
+export const getQuarterlyReport = (quarter) =>
+  api.get(`/reports/quarterly?quarter=${quarter}`).then((r) => r.data);
+
 // Dashboard
 export const getSummary = () =>
   api.get("/dashboard/summary").then((r) => r.data);

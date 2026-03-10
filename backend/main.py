@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from database import engine, Base
-from routers import balance, income, expenses, dashboard
+from routers import balance, income, expenses, dashboard, budgets, reports
 
 Base.metadata.create_all(bind=engine)
 
@@ -19,6 +19,8 @@ app.include_router(balance.router)
 app.include_router(income.router)
 app.include_router(expenses.router)
 app.include_router(dashboard.router)
+app.include_router(budgets.router)
+app.include_router(reports.router)
 
 
 @app.get("/")

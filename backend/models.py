@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, Float, String, Boolean, Date, DateTime, func
+from sqlalchemy import Column, Integer, Float, String, Boolean, Date, DateTime, UniqueConstraint, func
 from database import Base
 
 
@@ -38,3 +38,16 @@ class Expense(Base):
     end_date = Column(Date, nullable=True)         # recurring: data fine (opzionale)
     date = Column(Date, nullable=True)             # occasionale: data della spesa
     created_at = Column(DateTime, server_default=func.now())
+
+
+class CategoryBudget(Base):
+    __tablename__ = "category_budgets"
+
+    id = Column(Integer, primary_key=True, index=True)
+    month = Column(String, nullable=False)       # formato YYYY-MM
+    category = Column(String, nullable=False)
+    amount = Column(Float, nullable=False)
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+    __table_args__ = (UniqueConstraint("month", "category", name="uq_budget_month_category"),)

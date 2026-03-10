@@ -4,6 +4,8 @@ import Dashboard from "./pages/Dashboard";
 import IncomePage from "./pages/Income";
 import ExpensesPage from "./pages/Expenses";
 import Monthly from "./pages/Monthly";
+import BudgetSettings from "./pages/BudgetSettings";
+import Reports from "./pages/Reports";
 
 export default function App() {
   return (
@@ -16,6 +18,8 @@ export default function App() {
             <Route path="/income" element={<IncomePage />} />
             <Route path="/expenses" element={<ExpensesPage />} />
             <Route path="/monthly" element={<Monthly />} />
+            <Route path="/budget" element={<BudgetSettings />} />
+            <Route path="/reports" element={<Reports />} />
           </Routes>
         </main>
       </div>

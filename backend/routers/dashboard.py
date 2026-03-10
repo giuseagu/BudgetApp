@@ -4,41 +4,9 @@ from database import get_db
 from collections import defaultdict
 import models
 from datetime import date
+from utils import monthly_amount, count_months
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
-
-
-def _monthly_amount(item, year: int, month: int) -> float:
-    """Return the amount attributable to a given month."""
-    target = date(year, month, 1)
-
-    if item.is_recurring:
-        # Check start_date bound
-        if item.start_date:
-            start_first = item.start_date.replace(day=1)
-            if target < start_first:
-                return 0.0
-        # Check end_date bound
-        if item.end_date:
-            end_first = item.end_date.replace(day=1)
-            if target > end_first:
-                return 0.0
-
-        if item.frequency == "monthly":
-            return item.amount
-        elif item.frequency == "annual":
-            return item.amount / 12
-    else:
-        if item.date and item.date.year == year and item.date.month == month:
-            return item.amount
-
-    return 0.0
-
-
-def _count_months(start: date, end: date) -> int:
-    """Number of months between two dates (inclusive)."""
-    months = (end.year - start.year) * 12 + (end.month - start.month) + 1
-    return max(0, months)
 
 
 @router.get("/summary")
@@ -57,7 +25,7 @@ def get_summary(db: Session = Depends(get_db)):
         if inc.is_recurring:
             start = inc.start_date or (inc.created_at.date() if inc.created_at else today)
             end = min(inc.end_date, today) if inc.end_date else today
-            months = _count_months(start, end)
+            months = count_months(start, end)
             if inc.frequency == "monthly":
                 total_income += inc.amount * months
             elif inc.frequency == "annual":
@@ -69,7 +37,7 @@ def get_summary(db: Session = Depends(get_db)):
         if exp.is_recurring:
             start = exp.start_date or (exp.created_at.date() if exp.created_at else today)
             end = min(exp.end_date, today) if exp.end_date else today
-            months = _count_months(start, end)
+            months = count_months(start, end)
             if exp.frequency == "monthly":
                 total_expense += exp.amount * months
             elif exp.frequency == "annual":
@@ -95,12 +63,12 @@ def get_monthly(month: str = Query(..., description="Format: YYYY-MM"), db: Sess
     incomes = db.query(models.Income).all()
     expenses = db.query(models.Expense).all()
 
-    monthly_income = sum(_monthly_amount(i, year, mon) for i in incomes)
-    monthly_expense = sum(_monthly_amount(e, year, mon) for e in expenses)
+    monthly_income = sum(monthly_amount(i, year, mon) for i in incomes)
+    monthly_expense = sum(monthly_amount(e, year, mon) for e in expenses)
 
     category_map = defaultdict(float)
     for exp in expenses:
-        amt = _monthly_amount(exp, year, mon)
+        amt = monthly_amount(exp, year, mon)
         if amt > 0:
             category_map[exp.category] += amt
 
@@ -144,8 +112,8 @@ def get_last6months(db: Session = Depends(get_db)):
             month += 12
             year -= 1
 
-        monthly_income = sum(_monthly_amount(inc, year, month) for inc in incomes)
-        monthly_expense = sum(_monthly_amount(exp, year, month) for exp in expenses)
+        monthly_income = sum(monthly_amount(inc, year, month) for inc in incomes)
+        monthly_expense = sum(monthly_amount(exp, year, month) for exp in expenses)
 
         result.append({
             "month": f"{year}-{month:02d}",

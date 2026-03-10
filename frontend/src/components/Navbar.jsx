@@ -24,6 +24,12 @@ export default function Navbar() {
         <NavLink to="/monthly" className={linkClass}>
           Vista Mensile
         </NavLink>
+        <NavLink to="/budget" className={linkClass}>
+          Budget
+        </NavLink>
+        <NavLink to="/reports" className={linkClass}>
+          Report
+        </NavLink>
       </div>
     </nav>
   );
